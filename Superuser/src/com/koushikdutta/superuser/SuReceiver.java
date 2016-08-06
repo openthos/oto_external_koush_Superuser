@@ -60,36 +60,7 @@ public class SuReceiver extends BroadcastReceiver {
         le.date = (int)(System.currentTimeMillis() / 1000);
         le.getPackageInfo(context);
 
-        UidPolicy u = SuperuserDatabaseHelper.addLog(context, le);
-
-        String toast;
-        if (UidPolicy.ALLOW.equals(action)) {
-            toast = context.getString(R.string.superuser_granted, le.getName());
-        }
-        else {
-            toast = context.getString(R.string.superuser_denied, le.getName());
-        }
-
-        if (u != null && !u.notification)
-            return;
-
-        switch (Settings.getNotificationType(context)) {
-        case Settings.NOTIFICATION_TYPE_NOTIFICATION:
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(context);
-            builder.setTicker(toast)
-            .setAutoCancel(true)
-            .setContentIntent(PendingIntent.getActivity(context, 0, new Intent(), 0))
-            .setContentTitle(context.getString(R.string.superuser))
-            .setContentText(toast)
-            .setSmallIcon(R.drawable.ic_stat_notification);
-
-            NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
-            nm.notify(NOTIFICATION_ID, builder.build());
-            break;
-        case Settings.NOTIFICATION_TYPE_TOAST:
-            Toast.makeText(context, toast, Toast.LENGTH_SHORT).show();
-            break;
-        }
+        SuperuserDatabaseHelper.addLog(context, le);
     }
 
     private static final int NOTIFICATION_ID = 4545;
