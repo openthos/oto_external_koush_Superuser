@@ -299,12 +299,12 @@ static int daemon_accept(int fd) {
     char *pts_slave = read_string(fd);
     LOGD("remote pts_slave: %s", pts_slave);
     daemon_from_uid = read_int(fd);
-    LOGV("remote uid: %d", daemon_from_uid);
+    LOGD("remote uid: %d", daemon_from_uid);
     daemon_from_pid = read_int(fd);
-    LOGV("remote req pid: %d", daemon_from_pid);
+    LOGD("remote req pid: %d", daemon_from_pid);
 
     struct ucred credentials;
-    int ucred_length = sizeof(struct ucred);
+    socklen_t ucred_length = sizeof(struct ucred);
     /* fill in the user data structure */
     if(getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &credentials, &ucred_length)) {
         LOGE("could obtain credentials from unix domain socket");
@@ -334,7 +334,7 @@ static int daemon_accept(int fd) {
         LOGE("unable to allocate args: %d", argc);
         exit(-1);
     }
-    LOGV("remote args: %d", argc);
+    LOGD("remote args: %d", argc);
     char** argv = (char**)malloc(sizeof(char*) * (argc + 1));
     argv[argc] = NULL;
     int i;
@@ -416,9 +416,10 @@ static int daemon_accept(int fd) {
             errfd = ptsfd;
         }
     } else {
-        // TODO: Check system property, if PTYs are disabled,
-        // made infd the CTTY using:
-        // ioctl(infd, TIOCSCTTY, 1);
+        // If a TTY was sent directly, make it the CTTY.
+        if (isatty(infd)) {
+            ioctl(infd, TIOCSCTTY, 1);
+        }
     }
     free(pts_slave);
 
@@ -464,6 +465,9 @@ int run_daemon() {
 
     int previous_umask = umask(027);
     mkdir(REQUESTOR_DAEMON_PATH, 0777);
+
+    memset(sun.sun_path, 0, sizeof(sun.sun_path));
+    memcpy(sun.sun_path, "\0" "SUPERUSER", strlen("SUPERUSER") + 1);
 
     if (bind(fd, (struct sockaddr*)&sun, sizeof(sun)) < 0) {
         PLOGE("daemon bind");
@@ -572,23 +576,28 @@ int connect_daemon(int argc, char *argv[], int ppid) {
     sun.sun_family = AF_LOCAL;
     sprintf(sun.sun_path, "%s/server", REQUESTOR_DAEMON_PATH);
 
+    memset(sun.sun_path, 0, sizeof(sun.sun_path));
+    memcpy(sun.sun_path, "\0" "SUPERUSER", strlen("SUPERUSER") + 1);
+
     if (0 != connect(socketfd, (struct sockaddr*)&sun, sizeof(sun))) {
         PLOGE("connect");
         exit(-1);
     }
 
-    LOGV("connecting client %d", getpid());
+    LOGD("connecting client %d", getpid());
 
     int mount_storage = getenv("MOUNT_EMULATED_STORAGE") != NULL;
 
     // Determine which one of our streams are attached to a TTY
     int atty = 0;
 
-    // TODO: Check a system property and never use PTYs if
-    // the property is set.
-    if (isatty(STDIN_FILENO))  atty |= ATTY_IN;
-    if (isatty(STDOUT_FILENO)) atty |= ATTY_OUT;
-    if (isatty(STDERR_FILENO)) atty |= ATTY_ERR;
+    // Send TTYs directly (instead of proxying with a PTY) if
+    // the SUPERUSER_SEND_TTY environment variable is set.
+    if (getenv("SUPERUSER_SEND_TTY") == NULL) {
+        if (isatty(STDIN_FILENO))  atty |= ATTY_IN;
+        if (isatty(STDOUT_FILENO)) atty |= ATTY_OUT;
+        if (isatty(STDERR_FILENO)) atty |= ATTY_ERR;
+    }
 
     if (atty) {
         // We need a PTY. Get one.
