@@ -239,12 +239,10 @@ static void read_options(struct su_context *ctx) {
 }
 
 static void user_init(struct su_context *ctx) {
-    if (ctx->from.uid > 99999) {
+    if (ctx->user.multiuser_mode != MULTIUSER_MODE_NONE) {
         ctx->user.android_user_id = ctx->from.uid / 100000;
-        if (ctx->user.multiuser_mode == MULTIUSER_MODE_USER) {
-            snprintf(ctx->user.database_path, PATH_MAX, "%s/%d/%s", REQUESTOR_USER_PATH, ctx->user.android_user_id, REQUESTOR_DATABASE_PATH);
-            snprintf(ctx->user.base_path, PATH_MAX, "%s/%d/%s", REQUESTOR_USER_PATH, ctx->user.android_user_id, REQUESTOR);
-        }
+        snprintf(ctx->user.database_path, PATH_MAX, "%s/%d/%s", REQUESTOR_USER_PATH, ctx->user.android_user_id, REQUESTOR_DATABASE_PATH);
+        snprintf(ctx->user.base_path, PATH_MAX, "%s/%d/%s", REQUESTOR_USER_PATH, ctx->user.android_user_id, REQUESTOR);
     }
 }
 
