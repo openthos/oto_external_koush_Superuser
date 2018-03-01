@@ -20,7 +20,6 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.util.HashMap;
 
-import junit.framework.Assert;
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Intent;
@@ -98,7 +97,9 @@ public class MultitaskSuRequestActivity extends FragmentActivity {
     }
 
     void handleAction(boolean action, Integer until) {
-        Assert.assertTrue(!mHandled);
+        if (mHandled) {
+            throw new RuntimeException("mHandled is true");
+        }
         mHandled = true;
         try {
             mSocket.getOutputStream().write((action ? "socket:ALLOW" : "socket:DENY").getBytes());
