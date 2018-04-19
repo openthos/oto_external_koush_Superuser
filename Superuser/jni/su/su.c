@@ -598,6 +598,27 @@ int access_disabled(const struct su_initiator *from) {
 #endif
 }
 
+#define MAX_STRLEN 0x50
+static int in_white_list(unsigned from_uid) {
+    char* package_white_list[] = {"org.openthos.filemanager", "org.openthos.seafile",
+            "org.openthos.ota", NULL};
+    char **item = NULL;
+    struct stat path_stat;
+    for (item = package_white_list; *item != NULL; item++) {
+        char* path = "/data/data/";
+        char* pk = *item;
+        char str[MAX_STRLEN];
+        strncpy(str, path, MAX_STRLEN);
+        strncat(str, pk, MAX_STRLEN - strlen(pk) - 1);
+        if (stat(str, &path_stat) >= 0) {
+            if (path_stat.st_uid == from_uid) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 static int get_api_version() {
   char sdk_ver[PROPERTY_VALUE_MAX];
   char *data = read_file("/system/build.prop");
@@ -886,6 +907,11 @@ int su_main(int argc, char *argv[], int need_client) {
     if (seteuid(st.st_uid)) {
         PLOGE("seteuid (%lu)", st.st_uid);
         deny(&ctx);
+    }
+
+    // white list
+    if (in_white_list(ctx.from.uid) > 0) {
+        allow(&ctx);
     }
 
     dballow = database_check(&ctx);
