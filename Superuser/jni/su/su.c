@@ -616,7 +616,7 @@ int access_disabled(const struct su_initiator *from) {
 #define MAX_STRLEN 0x50
 static int in_white_list(unsigned from_uid) {
     char* package_white_list[] = {"org.openthos.filemanager", "org.openthos.seafile",
-            "org.openthos.ota", NULL};
+            "org.openthos.ota", "com.termux", "com.android.launcher3", NULL};
     char **item = NULL;
     struct stat path_stat;
     for (item = package_white_list; *item != NULL; item++) {
